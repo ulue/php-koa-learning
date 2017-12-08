@@ -12,7 +12,7 @@ namespace Inhere\Koa;
  * Class AsyncTask
  * @package Inhere\Koa
  */
-final class AsyncTask
+final class AsyncTask implements AsyncInterface
 {
     /** @var GenWrapper */
     public $gen;
@@ -47,12 +47,16 @@ final class AsyncTask
         $value = $this->gen->send($result);
 
         if ($this->gen->valid()) {
-            // 返回了子协程: 展开子协程
+            // \Generator -> AsyncInterface
             if ($value instanceof \Generator) {
+                $value = new self($value);
+            }
+
+            if ($value instanceof AsyncInterface) {
                 // 父任务next方法是子任务的延续，子任务迭代完成后继续完成父任务迭代
                 $continuation = [$this, 'next'];
 
-                (new self($value))->begin($continuation);
+                $value->begin($continuation);
             } else {
                 $this->next($value);
             }
