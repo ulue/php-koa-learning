@@ -31,6 +31,7 @@ final class AsyncTask implements AsyncInterface
 
     /**
      * @param callable $continuation
+     * @throws \Exception
      */
     public function begin(callable $continuation)
     {
@@ -41,28 +42,49 @@ final class AsyncTask implements AsyncInterface
 
     /**
      * @param null|mixed $result
+     * @param \Exception|null $ex
+     * @throws \Exception
      */
-    public function next($result = null)
+    public function next($result = null, \Exception $ex = null)
     {
-        $value = $this->gen->send($result);
-
-        if ($this->gen->valid()) {
-            // \Generator -> AsyncInterface
-            if ($value instanceof \Generator) {
-                $value = new self($value);
-            }
-
-            if ($value instanceof AsyncInterface) {
-                // 父任务next方法是子任务的延续，子任务迭代完成后继续完成父任务迭代
-                $continuation = [$this, 'next'];
-
-                $value->begin($continuation);
+        try {
+            if ($ex) {
+                $value = $this->gen->throw($ex);
             } else {
-                $this->next($value);
+                $value = $this->gen->send($result);
             }
-        } else {
-            $cb = $this->continuation;
-            $cb($result);
+
+            if ($this->gen->valid()) {
+                // \Generator -> AsyncInterface
+                if ($value instanceof \Generator) {
+                    $value = new self($value);
+                }
+
+                if ($value instanceof AsyncInterface) {
+                    // 父任务next方法是子任务的延续，子任务迭代完成后继续完成父任务迭代
+                    $continuation = [$this, 'next'];
+
+                    $value->begin($continuation);
+                } else {
+                    $this->next($value);
+                }
+            } else {
+                // 迭代结束 返回结果
+                // cb 指向 父生成器next方法 或 用户传入continuation
+                $cb = $this->continuation;
+                $cb($result, null);
+            }
+        } catch (\Exception $ex){
+            // 抛出异常
+            if ($this->gen->valid()) {
+                $this->next(null, $ex);
+
+                // 未捕获异常
+            } else {
+                // cb 指向 父生成器next方法 或 用户传入continuation
+                $cb = $this->continuation;
+                $cb(null, $ex);
+            }
         }
     }
 }

@@ -43,7 +43,16 @@ class GenWrapper
 
         return $this->generator->send($value);
     }
-    
+
+    /**
+     * @param \Exception $e
+     * @return mixed
+     */
+    public function throw(\Exception $e)
+    {
+        return $this->generator->throw($e);
+    }
+
     /**
      * @return bool
      */
