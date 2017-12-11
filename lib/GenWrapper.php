@@ -18,7 +18,7 @@ class GenWrapper
     private $isFirst = true;
 
     /** @var \Generator */
-    protected $generator;
+    public $generator;
 
     /**
      * Generator constructor.

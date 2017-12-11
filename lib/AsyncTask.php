@@ -17,16 +17,22 @@ final class AsyncTask implements AsyncInterface
     /** @var GenWrapper */
     public $gen;
 
+    /** @var self */
+    public $parent;
+
     /** @var callable */
     public $continuation;
 
     /**
      * AsyncTask constructor.
      * @param \Generator $generator
+     * @param AsyncTask|null $parent
+     * - 我们在构造器添加 $parent 参数， 把父子生成器链接起来，使其可以进行回溯
      */
-    public function __construct(\Generator $generator)
+    public function __construct(\Generator $generator, self $parent = null)
     {
         $this->gen = new GenWrapper($generator);
+        $this->parent = $parent;
     }
 
     /**
@@ -55,9 +61,13 @@ final class AsyncTask implements AsyncInterface
             }
 
             if ($this->gen->valid()) {
+                if ($value instanceof SysCall) {
+                    $value = $value($this);
+                }
+
                 // \Generator -> AsyncInterface
                 if ($value instanceof \Generator) {
-                    $value = new self($value);
+                    $value = new self($value, $this);
                 }
 
                 if ($value instanceof AsyncInterface) {
@@ -83,7 +93,7 @@ final class AsyncTask implements AsyncInterface
             } else {
                 // cb 指向 父生成器next方法 或 用户传入continuation
                 $cb = $this->continuation;
-                $cb(null, $ex);
+                $cb($result, $ex);
             }
         }
     }

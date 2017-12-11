@@ -8,6 +8,8 @@
 error_reporting(E_ALL | E_STRICT);
 date_default_timezone_set('Asia/Shanghai');
 
+include dirname(__DIR__) . '/lib/functions.php';
+
 spl_autoload_register(function ($class) {
     $file = null;
 
